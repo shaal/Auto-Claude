@@ -1,11 +1,29 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
+
+/**
+ * Vite plugin to serve index.web.html instead of index.html in dev mode.
+ * rollupOptions.input only affects the build; dev needs this middleware.
+ */
+function webHtmlPlugin(): Plugin {
+  return {
+    name: 'web-html-rewrite',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url === '/' || req.url === '/index.html') {
+          req.url = '/index.web.html';
+        }
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig({
   root: resolve(__dirname, 'src/renderer'),
   base: '/',
-  plugins: [react()],
+  plugins: [webHtmlPlugin(), react()],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src/renderer'),
