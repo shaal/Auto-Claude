@@ -150,5 +150,16 @@ export function createWebAPI(): Partial<ElectronAPI> {
     // Settings
     getTabState: () => apiGet('/settings/tab-state'),
     saveTabState: (tabState) => apiPost('/settings/tab-state', tabState),
+    getSettings: async () => {
+      const result = await apiGet<any>('/settings');
+      if (!result.success) return result;
+      return { success: true, data: { ...result.data, onboardingCompleted: true } };
+    },
+    saveSettings: (settings) => apiPost('/settings', settings),
+    // Prevent onboarding migration code from re-triggering the wizard
+    getClaudeCodeOnboardingStatus: async () => ({
+      success: true,
+      data: { hasCompletedOnboarding: true },
+    }),
   } as Partial<ElectronAPI>;
 }
