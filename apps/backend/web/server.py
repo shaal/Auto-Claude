@@ -60,14 +60,21 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
 
     # Serve static files and SPA catch-all
     if config.static_dir and config.static_dir.exists():
-        app.mount("/assets", StaticFiles(directory=config.static_dir / "assets"), name="assets")
+        assets_dir = config.static_dir / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+        # Detect the HTML entry point (build outputs index.web.html)
+        index_html = config.static_dir / "index.web.html"
+        if not index_html.exists():
+            index_html = config.static_dir / "index.html"
 
         @app.get("/{path:path}")
         async def spa_catch_all(path: str):
-            """Serve index.html for all non-API routes (SPA routing)."""
+            """Serve static files or fall back to index.html for SPA routing."""
             file_path = config.static_dir / path
             if file_path.exists() and file_path.is_file():
                 return FileResponse(file_path)
-            return FileResponse(config.static_dir / "index.html")
+            return FileResponse(index_html)
 
     return app
