@@ -48,7 +48,10 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:web": "vite --config vite.web.config.ts",
+    "build:web": "vite build --config vite.web.config.ts",
+    "preview:web": "vite preview --config vite.web.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
