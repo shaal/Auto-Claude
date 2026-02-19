@@ -161,5 +161,16 @@ export function createWebAPI(): Partial<ElectronAPI> {
       success: true,
       data: { hasCompletedOnboarding: true },
     }),
+    // GitHub CLI — check real server-side gh installation and auth status
+    checkGitHubCli: async () => {
+      const result = await apiGet<any>('/github/cli-status');
+      if (!result.success) return { success: true, data: { installed: false } };
+      return { success: true, data: { installed: !!result.data.installed, version: result.data.version } };
+    },
+    checkGitHubAuth: async () => {
+      const result = await apiGet<any>('/github/cli-status');
+      if (!result.success) return { success: true, data: { authenticated: false } };
+      return { success: true, data: { authenticated: !!result.data.authenticated, username: result.data.username } };
+    },
   } as Partial<ElectronAPI>;
 }

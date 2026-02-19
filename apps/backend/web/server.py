@@ -1,5 +1,7 @@
 """FastAPI web server for Auto Claude shared dashboard."""
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -60,6 +62,7 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
 
     # App settings (skip onboarding wizard in web mode)
     _APP_SETTINGS_FILE = config.project_dir / ".auto-claude" / "web-app-settings.json"
+    _BACKEND_DIR = str(Path(__file__).parent.parent.resolve())
 
     @app.get("/api/settings")
     async def get_settings():
@@ -72,6 +75,8 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
                 settings = {}
         # Always force onboarding completed — web mode has no wizard
         settings["onboardingCompleted"] = True
+        # Provide autoBuildPath so project initialization works
+        settings.setdefault("autoBuildPath", _BACKEND_DIR)
         return settings
 
     @app.post("/api/settings")
@@ -90,6 +95,43 @@ def create_app(config: WebConfig | None = None) -> FastAPI:
         settings_dir.mkdir(parents=True, exist_ok=True)
         _APP_SETTINGS_FILE.write_text(json.dumps(settings, indent=2))
         return settings
+
+    # GitHub CLI status (check if gh is available on the server)
+    @app.get("/api/github/cli-status")
+    async def github_cli_status():
+        import shutil
+        import subprocess
+        result = {"installed": False, "authenticated": False}
+        gh_path = shutil.which("gh")
+        if not gh_path:
+            return result
+        try:
+            version_out = subprocess.run(
+                [gh_path, "--version"], capture_output=True, text=True, timeout=5
+            )
+            if version_out.returncode == 0:
+                # Extract version like "gh version 2.x.x ..."
+                first_line = version_out.stdout.strip().split("\n")[0]
+                result["installed"] = True
+                result["version"] = first_line.split()[-1] if first_line else None
+        except Exception:
+            return result
+        try:
+            auth_out = subprocess.run(
+                [gh_path, "auth", "status"], capture_output=True, text=True, timeout=5
+            )
+            result["authenticated"] = auth_out.returncode == 0
+            if result["authenticated"]:
+                # Try to get username
+                user_out = subprocess.run(
+                    [gh_path, "api", "user", "--jq", ".login"],
+                    capture_output=True, text=True, timeout=5
+                )
+                if user_out.returncode == 0 and user_out.stdout.strip():
+                    result["username"] = user_out.stdout.strip()
+        except Exception:
+            pass
+        return result
 
     # Serve static files and SPA catch-all
     if config.static_dir and config.static_dir.exists():
